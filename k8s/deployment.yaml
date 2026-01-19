@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: softapp-deployment
+  labels:
+    app: softapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: softapp
+  template:
+    metadata:
+      labels:
+        app: softapp
+    spec:
+      containers:
+      - name: softapp-container
+        image: shivsoftapp/admin-dashbaord:035
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
