@@ -2,62 +2,66 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "shivsoftapp/admin-dashboard"
-        IMAGE_TAG  = "${BUILD_NUMBER}"
-        KUBECONFIG = "C:\\ProgramData\\Jenkins\\.kube\\config"
+        IMAGE_NAME = "shivsoftapp/admin-dashbaord-final"
+        IMAGE_TAG  = "035"
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout Code from GitLab') {
             steps {
-                checkout scm
+                git branch: 'main',
+                url: 'https://gitlab.com/SOFTAPP-TECHNOLOGIES/k8s-jenkins-cicd-pipeline.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Docker Build') {
             steps {
-                bat """
-                docker build -t %IMAGE_NAME%:%IMAGE_TAG% .
-                """
+                sh '''
+                docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                '''
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Docker Login & Push') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat """
-                    docker login -u %DOCKER_USER% -p %DOCKER_PASS%
-                    docker push %IMAGE_NAME%:%IMAGE_TAG%
-                    """
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $IMAGE_NAME:$IMAGE_TAG
+                    '''
                 }
+            }
+        }
+
+        stage('Update Kubernetes Image') {
+            steps {
+                sh '''
+                sed -i "s|IMAGE_NAME|$IMAGE_NAME:$IMAGE_TAG|g" k8s/deployment.yaml
+                '''
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                bat """
-                kubectl get nodes || exit /b 1
-
-                kubectl set image deployment/admin-dashboard-deployment ^
-                admin-dashboard=%IMAGE_NAME%:%IMAGE_TAG% || exit /b 1
-
-                kubectl rollout status deployment/admin-dashboard-deployment --timeout=120s || exit /b 1
-                """
+                sh '''
+                kubectl apply -f k8s/deployment.yaml
+                kubectl apply -f k8s/service.yaml
+                '''
             }
         }
-    }
 
-    post {
-        success {
-            echo "✅ CI/CD Pipeline SUCCESSFULLY COMPLETED"
-        }
-        failure {
-            echo "❌ CI/CD Pipeline FAILED"
+        stage('Verify Deployment') {
+            steps {
+                sh '''
+                kubectl get pods
+                kubectl get svc
+                '''
+            }
         }
     }
 }
