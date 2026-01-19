@@ -3,8 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "shivsoftapp/admin-dashbaord"
-        IMAGE_TAG    = "${BUILD_NUMBER}"
-        K8S_NS       = "default"
+        IMAGE_TAG = "035"
     }
 
     stages {
@@ -17,13 +16,13 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Image') {
             steps {
                 bat 'docker build -t %DOCKER_IMAGE%:%IMAGE_TAG% .'
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Push Image') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
@@ -38,41 +37,21 @@ pipeline {
             }
         }
 
-        stage('Kubernetes Pre-Check (NO DEPLOY YET)') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KCFG')]) {
-                    bat '''
-                    set KUBECONFIG=%KCFG%
-                    echo ===== K8s CONNECTIVITY CHECK =====
-                    kubectl get nodes || exit /b 1
-                    '''
-                }
-            }
-        }
-
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KCFG')]) {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat '''
-                    set KUBECONFIG=%KCFG%
+                    set KUBECONFIG=%KUBECONFIG%
 
-                    kubectl apply -f k8s/deployment.yaml -n %K8S_NS% || exit /b 1
-                    kubectl apply -f k8s/service.yaml -n %K8S_NS% || exit /b 1
+                    kubectl get nodes || exit /b 1
 
-                    kubectl set image deployment/admin-dashboard admin-dashboard=%DOCKER_IMAGE%:%IMAGE_TAG% -n %K8S_NS% || exit /b 1
-                    kubectl rollout status deployment/admin-dashboard -n %K8S_NS% --timeout=180s || exit /b 1
+                    kubectl apply -f k8s/deployment.yaml || exit /b 1
+                    kubectl apply -f k8s/service.yaml || exit /b 1
+
+                    kubectl rollout status deployment/admin-dashboard-deployment --timeout=120s || exit /b 1
                     '''
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo "🚀 SUCCESS: WINDOWS JENKINS → LOCAL KUBERNETES DEPLOYED"
-        }
-        failure {
-            echo "❌ FAILURE: kubeconfig server IP / network issue (NOT pipeline bug)"
         }
     }
 }
