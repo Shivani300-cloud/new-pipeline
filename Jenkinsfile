@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "shivsoftapp/admin-dashbaord"
-        IMAGE_TAG = "035"
+        IMAGE_TAG    = "035"
     }
 
     stages {
@@ -41,29 +41,41 @@ pipeline {
             }
         }
 
+        /* ===============================
+           KUBERNETES DEPLOYMENT STAGE
+           =============================== */
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat '''
-                    echo ===== Kubernetes Deploy Stage =====
-                    echo Using kubeconfig: %KUBECONFIG%
+                    echo ===============================
+                    echo   Kubernetes Deployment Stage
+                    echo ===============================
+
+                    set KUBECONFIG=%KUBECONFIG%
 
                     kubectl version --client
 
-                    echo Checking Kubernetes cluster connectivity...
-                    kubectl get nodes >nul 2>&1
+                    echo Checking cluster connectivity...
+                    kubectl get nodes
 
                     IF %ERRORLEVEL% NEQ 0 (
-                        echo WARNING: Kubernetes cluster not reachable
-                        echo Skipping Kubernetes deployment
-                        exit /b 0
+                        echo ❌ Kubernetes cluster not reachable
+                        exit /b 1
                     )
 
-                    echo Kubernetes cluster reachable
+                    echo ✅ Cluster reachable
+
+                    echo Applying Deployment...
                     kubectl apply -f k8s/deployment.yaml --validate=false
+
+                    echo Applying Service...
                     kubectl apply -f k8s/service.yaml --validate=false
 
-                    echo Kubernetes deployment completed successfully
+                    echo Waiting for rollout...
+                    kubectl rollout status deployment/admin-dashboard-deployment
+
+                    echo ✅ Kubernetes deployment successful
                     '''
                 }
             }
