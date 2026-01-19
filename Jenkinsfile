@@ -8,7 +8,7 @@ pipeline {
 
     stages {
 
-        stage('Checkout Code (GitLab SSH)') {
+        stage('Checkout Code') {
             steps {
                 git branch: 'main',
                     url: 'git@gitlab.com:SOFTAPP-TECHNOLOGIES/k8s-jenkins-cicd-pipeline.git',
@@ -22,7 +22,7 @@ pipeline {
             }
         }
 
-        stage('Docker Push') {
+        stage('Push Docker Image') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub-creds',
@@ -31,39 +31,27 @@ pipeline {
                 )]) {
                     bat '''
                     docker login -u %DOCKER_USER% -p %DOCKER_PASS%
-                    docker tag %DOCKER_IMAGE%:%IMAGE_TAG% %DOCKER_IMAGE%:latest
                     docker push %DOCKER_IMAGE%:%IMAGE_TAG%
-                    docker push %DOCKER_IMAGE%:latest
                     '''
                 }
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Deploy to Kubernetes (MAIN STAGE)') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat '''
-                    echo ================================
-                    echo  KUBERNETES DEPLOYMENT (FINAL)
-                    echo ================================
-
+                    echo ===== KUBERNETES DEPLOYMENT =====
                     set KUBECONFIG=%KUBECONFIG%
 
-                    kubectl version --client || exit /b 1
-
-                    echo Checking cluster connectivity...
                     kubectl get nodes || exit /b 1
 
-                    echo Applying Deployment...
                     kubectl apply -f k8s/deployment.yaml || exit /b 1
-
-                    echo Applying Service...
                     kubectl apply -f k8s/service.yaml || exit /b 1
 
-                    echo Waiting for rollout...
-                    kubectl rollout status deployment/admin-dashboard-deployment --timeout=120s || exit /b 1
+                    kubectl rollout status deployment/admin-dashboard --timeout=180s || exit /b 1
 
-                    echo ✅ DEPLOYMENT & SERVICE SUCCESSFUL
+                    kubectl get svc
                     '''
                 }
             }
@@ -72,10 +60,10 @@ pipeline {
 
     post {
         success {
-            echo "🚀 CI/CD PIPELINE SUCCESSFULLY COMPLETED"
+            echo "🚀 DEPLOYMENT SUCCESSFUL (DOCKER + K8s)"
         }
         failure {
-            echo "❌ PIPELINE FAILED - CHECK KUBERNETES CONNECTIVITY"
+            echo "❌ PIPELINE FAILED – CHECK K8s YAML OR CLUSTER"
         }
     }
 }
