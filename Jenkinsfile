@@ -18,9 +18,7 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                bat '''
-                docker build -t %DOCKER_IMAGE%:%IMAGE_TAG% .
-                '''
+                bat 'docker build -t %DOCKER_IMAGE%:%IMAGE_TAG% .'
             }
         }
 
@@ -41,41 +39,31 @@ pipeline {
             }
         }
 
-        /* ===============================
-           KUBERNETES DEPLOYMENT STAGE
-           =============================== */
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     bat '''
-                    echo ===============================
-                    echo   Kubernetes Deployment Stage
-                    echo ===============================
+                    echo ================================
+                    echo  KUBERNETES DEPLOYMENT (FINAL)
+                    echo ================================
 
                     set KUBECONFIG=%KUBECONFIG%
 
-                    kubectl version --client
+                    kubectl version --client || exit /b 1
 
                     echo Checking cluster connectivity...
-                    kubectl get nodes
-
-                    IF %ERRORLEVEL% NEQ 0 (
-                        echo ❌ Kubernetes cluster not reachable
-                        exit /b 1
-                    )
-
-                    echo ✅ Cluster reachable
+                    kubectl get nodes || exit /b 1
 
                     echo Applying Deployment...
-                    kubectl apply -f k8s/deployment.yaml --validate=false
+                    kubectl apply -f k8s/deployment.yaml || exit /b 1
 
                     echo Applying Service...
-                    kubectl apply -f k8s/service.yaml --validate=false
+                    kubectl apply -f k8s/service.yaml || exit /b 1
 
                     echo Waiting for rollout...
-                    kubectl rollout status deployment/admin-dashboard-deployment
+                    kubectl rollout status deployment/admin-dashboard-deployment --timeout=120s || exit /b 1
 
-                    echo ✅ Kubernetes deployment successful
+                    echo ✅ DEPLOYMENT & SERVICE SUCCESSFUL
                     '''
                 }
             }
@@ -84,10 +72,10 @@ pipeline {
 
     post {
         success {
-            echo "🚀 CI/CD Pipeline Completed Successfully!"
+            echo "🚀 CI/CD PIPELINE SUCCESSFULLY COMPLETED"
         }
         failure {
-            echo "❌ CI/CD Pipeline Failed!"
+            echo "❌ PIPELINE FAILED - CHECK KUBERNETES CONNECTIVITY"
         }
     }
 }
