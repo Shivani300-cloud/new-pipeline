@@ -64,13 +64,5 @@ pipeline {
             }
         }
 
-        stage('Verify Deployment') {
-            steps {
-                bat '''
-                kubectl get pods
-                kubectl get svc
-                '''
-            }
-        }
     }
 }
