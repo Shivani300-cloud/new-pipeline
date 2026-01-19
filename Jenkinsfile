@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "shivsoftapp/admin-dashbaord"
-        IMAGE_TAG    = "035"
+        IMAGE_TAG    = "${BUILD_NUMBER}"
+        K8S_NS       = "default"
     }
 
     stages {
@@ -37,23 +38,29 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes (MAIN STAGE)') {
+        stage('Kubernetes Pre-Check (NO DEPLOY YET)') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KCFG')]) {
                     bat '''
-                    echo ===== KUBERNETES DEPLOYMENT =====
-                    set KUBECONFIG=%KUBECONFIG%
-
-                    kubectl version --client || exit /b 1
+                    set KUBECONFIG=%KCFG%
+                    echo ===== K8s CONNECTIVITY CHECK =====
                     kubectl get nodes || exit /b 1
+                    '''
+                }
+            }
+        }
 
-                    kubectl apply -f k8s/deployment.yaml || exit /b 1
-                    kubectl apply -f k8s/service.yaml || exit /b 1
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KCFG')]) {
+                    bat '''
+                    set KUBECONFIG=%KCFG%
 
-                    kubectl rollout status deployment/admin-dashboard --timeout=180s || exit /b 1
+                    kubectl apply -f k8s/deployment.yaml -n %K8S_NS% || exit /b 1
+                    kubectl apply -f k8s/service.yaml -n %K8S_NS% || exit /b 1
 
-                    kubectl get pods
-                    kubectl get svc
+                    kubectl set image deployment/admin-dashboard admin-dashboard=%DOCKER_IMAGE%:%IMAGE_TAG% -n %K8S_NS% || exit /b 1
+                    kubectl rollout status deployment/admin-dashboard -n %K8S_NS% --timeout=180s || exit /b 1
                     '''
                 }
             }
@@ -62,10 +69,10 @@ pipeline {
 
     post {
         success {
-            echo "🚀 CI/CD SUCCESS – DOCKER + KUBERNETES DEPLOYED"
+            echo "🚀 SUCCESS: WINDOWS JENKINS → LOCAL KUBERNETES DEPLOYED"
         }
         failure {
-            echo "❌ PIPELINE FAILED – CHECK KUBECONFIG / CLUSTER"
+            echo "❌ FAILURE: kubeconfig server IP / network issue (NOT pipeline bug)"
         }
     }
 }
