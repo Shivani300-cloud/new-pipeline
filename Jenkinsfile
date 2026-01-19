@@ -43,10 +43,10 @@ pipeline {
                     bat '''
                     set KUBECONFIG=%KUBECONFIG%
 
-                    kubectl get nodes || exit /b 1
+                    kubectl get nodes
 
-                    kubectl apply -f k8s/deployment.yaml || exit /b 1
-                    kubectl apply -f k8s/service.yaml || exit /b 1
+                    kubectl apply -f k8s/deployment.yaml 
+                    kubectl apply -f k8s/service.yaml 
 
                     kubectl rollout status deployment/admin-dashboard-deployment --timeout=120s || exit /b 1
                     '''
