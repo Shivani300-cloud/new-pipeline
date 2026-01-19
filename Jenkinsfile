@@ -44,6 +44,7 @@ pipeline {
                     echo ===== KUBERNETES DEPLOYMENT =====
                     set KUBECONFIG=%KUBECONFIG%
 
+                    kubectl version --client || exit /b 1
                     kubectl get nodes || exit /b 1
 
                     kubectl apply -f k8s/deployment.yaml || exit /b 1
@@ -51,6 +52,7 @@ pipeline {
 
                     kubectl rollout status deployment/admin-dashboard --timeout=180s || exit /b 1
 
+                    kubectl get pods
                     kubectl get svc
                     '''
                 }
@@ -60,10 +62,10 @@ pipeline {
 
     post {
         success {
-            echo "🚀 DEPLOYMENT SUCCESSFUL (DOCKER + K8s)"
+            echo "🚀 CI/CD SUCCESS – DOCKER + KUBERNETES DEPLOYED"
         }
         failure {
-            echo "❌ PIPELINE FAILED – CHECK K8s YAML OR CLUSTER"
+            echo "❌ PIPELINE FAILED – CHECK KUBECONFIG / CLUSTER"
         }
     }
 }
