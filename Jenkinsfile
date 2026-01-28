@@ -17,7 +17,6 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                // Use 'sh' for Linux/macOS
                 sh """
                 docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
                 """
@@ -44,7 +43,7 @@ pipeline {
                 sh """
                 IMAGE_FULL="${IMAGE_NAME}:${IMAGE_TAG}"
                 # Replace placeholder IMAGE_NAME in deployment.yaml with the new image
-                sed -i '' "s|IMAGE_NAME|$IMAGE_FULL|g" k8s/deployment.yaml
+                sed -i'' -e "s|IMAGE_NAME|$IMAGE_FULL|g" k8s/deployment.yaml
                 """
             }
         }
@@ -54,3 +53,20 @@ pipeline {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     sh """
                     export KUBECONFIG=\$KUBECONFIG
+                    kubectl apply -f k8s/deployment.yaml
+                    """
+                }
+            }
+        }
+
+    } // end of stages
+
+    post {
+        success {
+            echo "Deployment successful!"
+        }
+        failure {
+            echo "Deployment failed!"
+        }
+    }
+}
