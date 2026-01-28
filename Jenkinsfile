@@ -17,9 +17,10 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                bat '''
-                docker build -t %IMAGE_NAME%:%IMAGE_TAG% .
-                '''
+                // Use 'sh' for Linux/macOS instead of 'bat'
+                sh """
+                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                """
             }
         }
 
@@ -30,39 +31,23 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    bat '''
-                    echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin
-                    docker push %IMAGE_NAME%:%IMAGE_TAG%
-                    '''
+                    sh """
+                    echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
                 }
             }
         }
 
         stage('Update Kubernetes Image in YAML') {
             steps {
-                powershell '''
-                $image = "$env:IMAGE_NAME`:$env:IMAGE_TAG"
-                (Get-Content k8s\\deployment.yaml) `
-                  -replace "IMAGE_NAME", $image |
-                Set-Content k8s\\deployment.yaml
-                '''
+                sh """
+                IMAGE_FULL="\${IMAGE_NAME}:\${IMAGE_TAG}"
+                sed -i '' "s|IMAGE_NAME|$IMAGE_FULL|g" k8s/deployment.yaml
+                """
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    bat '''
-                    set KUBECONFIG=%KUBECONFIG%
-
-                    kubectl get nodes || exit /b 1
-
-                    kubectl apply -f k8s/deployment.yaml || exit /b 1
-                    kubectl apply -f k8s/service.yaml || exit /b 1
-                    '''
-                }
-            }
-        }
-
-    }
-}
+                withCredentials([file(credentialsId: 'ku]()
