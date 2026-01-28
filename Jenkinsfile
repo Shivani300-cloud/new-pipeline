@@ -17,7 +17,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                // Use 'sh' for Linux/macOS instead of 'bat'
+                // Use 'sh' for Linux/macOS
                 sh """
                 docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
                 """
@@ -27,8 +27,8 @@ pipeline {
         stage('Docker Login & Push') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
+                    credentialsId: 'dockerhub-creds', 
+                    usernameVariable: 'DOCKER_USER', 
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh """
@@ -42,7 +42,8 @@ pipeline {
         stage('Update Kubernetes Image in YAML') {
             steps {
                 sh """
-                IMAGE_FULL="\${IMAGE_NAME}:\${IMAGE_TAG}"
+                IMAGE_FULL="${IMAGE_NAME}:${IMAGE_TAG}"
+                # Replace placeholder IMAGE_NAME in deployment.yaml with the new image
                 sed -i '' "s|IMAGE_NAME|$IMAGE_FULL|g" k8s/deployment.yaml
                 """
             }
@@ -50,4 +51,6 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'ku]()
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                    export KUBECONFIG=\$KUBECONFIG
