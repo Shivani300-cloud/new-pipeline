@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "shivsoftapp/admin-dashbaord"
+        IMAGE_NAME = "shivanitusharsharma/admin-dashbaord"
         IMAGE_TAG  = "039"
     }
 
@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout Code from GitLab') {
             steps {
                 git branch: 'main',
-                    url: 'https://gitlab.com/SOFTAPP-TECHNOLOGIES/k8s-jenkins-cicd-pipeline.git'
+                    url: 'https://github.com/Shivani300-cloud/new-pipeline'
             }
         }
 
@@ -70,3 +70,4 @@ pipeline {
         }
     }
 }
+
