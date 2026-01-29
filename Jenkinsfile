@@ -42,8 +42,8 @@ pipeline {
         stage('Update Kubernetes Image in YAML') {
             steps {
                 sh """
-                # For Linux compatibility
-                sed -i -e "s|IMAGE_NAME|${IMAGE_FULL}|g" k8s/deployment.yaml
+                # macOS-compatible sed command
+                sed -i '' -e "s|IMAGE_NAME|${IMAGE_FULL}|g" k8s/deployment.yaml
                 """
             }
         }
@@ -63,9 +63,8 @@ pipeline {
                     echo "🔹 Deploying application..."
                     kubectl apply --validate=false -f k8s/deployment.yaml
 
-                    # Replace <your-deployment-name> with actual deployment name in YAML
                     echo "🔹 Waiting for deployment rollout..."
-                    kubectl rollout status deployment/<your-deployment-name> || {
+                    kubectl rollout status deployment/admin-dashboard-deployment || {
                         echo "❌ Deployment rollout failed"
                         exit 1
                     }
@@ -86,4 +85,3 @@ pipeline {
         }
     }
 }
-
