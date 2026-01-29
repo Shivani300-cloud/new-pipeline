@@ -5,7 +5,7 @@ metadata:
   labels:
     app: admin-dashboard
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: admin-dashboard
@@ -16,6 +16,7 @@ spec:
     spec:
       containers:
         - name: admin-dashboard-container
-          image: shivsoftapp/admin-dashbaord:039
+          image: shivanitusharsharma/admin-dashbaord:039
           ports:
             - containerPort: 80
+
