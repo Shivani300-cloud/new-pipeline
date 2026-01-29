@@ -4,21 +4,22 @@ pipeline {
     environment {
         IMAGE_NAME = "shivanitusharsharma/admin-dashbaord"
         IMAGE_TAG  = "039"
+        IMAGE_FULL = "${IMAGE_NAME}:${IMAGE_TAG}"
     }
 
     stages {
 
-        stage('Checkout Code from GitLab') {
+        stage('Checkout Code from GitHub') {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/Shivani300-cloud/new-pipeline'
+                    url: 'https://github.com/Shivani300-cloud/new-pipeline.git'
             }
         }
 
         stage('Docker Build') {
             steps {
                 sh """
-                docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                docker build -t ${IMAGE_FULL} .
                 """
             }
         }
@@ -26,13 +27,13 @@ pipeline {
         stage('Docker Login & Push') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds-new', 
-                    usernameVariable: 'DOCKER_USER', 
+                    credentialsId: 'dockerhub-creds-new',
+                    usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh """
                     echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
-                    docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${IMAGE_FULL}
                     """
                 }
             }
@@ -41,34 +42,29 @@ pipeline {
         stage('Update Kubernetes Image in YAML') {
             steps {
                 sh """
-                IMAGE_FULL="${IMAGE_NAME}:${IMAGE_TAG}"
-                # Replace placeholder IMAGE_NAME in deployment.yaml with the new image
-                sed -i'' -e "s|IMAGE_NAME|$IMAGE_FULL|g" k8s/deployment.yaml
+                sed -i'' -e "s|IMAGE_NAME|${IMAGE_FULL}|g" k8s/deployment.yaml
                 """
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
                     sh """
-                    export KUBECONFIG=\$KUBECONFIG
+                    export KUBECONFIG=\$KUBECONFIG_FILE
                     kubectl apply -f k8s/deployment.yaml
                     """
                 }
             }
         }
-
-    } // end of stages
+    }
 
     post {
         success {
-            echo "Deployment successful!"
+            echo "✅ Deployment successful!"
         }
         failure {
-            echo "Deployment failed!"
+            echo "❌ Deployment failed!"
         }
     }
 }
-
-
