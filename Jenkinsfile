@@ -50,7 +50,7 @@ pipeline {
 
         stage('Verify Kubeconfig & Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                withCredentials([file(credentialsId: 'kubeconfig-minikube', variable: 'KUBECONFIG_FILE')]) {
                     sh """
                     export KUBECONFIG=\$KUBECONFIG_FILE
 
@@ -86,3 +86,4 @@ pipeline {
         }
     }
 }
+
